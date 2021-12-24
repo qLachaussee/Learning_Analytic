@@ -17,7 +17,7 @@ import time
 from zipfile import ZipFile
 
 import sys
-sys.setrecursionlimit(10000)
+sys.setrecursionlimit(100000)
 
 # st.set_option('deprecation.showPyplotGlobalUse', False)
 
