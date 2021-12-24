@@ -19,7 +19,7 @@ from zipfile import ZipFile
 # st.set_option('deprecation.showPyplotGlobalUse', False)
 
 id_student = pickle.load(open( "id_student.p", "rb" ) )
-users = {str(id):"20/20" for id in id_student.unique()[:100}
+users = {str(id):"20/20" for id in id_student.unique()[:100]}
 
 
 def main():
