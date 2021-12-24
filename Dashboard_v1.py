@@ -15,15 +15,17 @@ from sklearn.impute import SimpleImputer
 import seaborn as sns
 import matplotlib.pyplot as plt
 import time
+from zipfile import ZipFile
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 id_student = pickle.load(open( "id_student.p", "rb" ) )
-
-users = {id:"20/20" for id in id_student}
+users = {str(id):"20/20" for id in id_student.unique()}
 
 @st.experimental_memo
 def load_data():
+    with ZipFile("dataset_dict.zip", 'r') as zip:
+        zip.extract('dataset_dict.p')
     return pickle.load(open( "dataset_dict.p", "rb" ) )
 
 def print_load_data():
@@ -238,7 +240,7 @@ def one(final_df):
     final_df['final_result_first'].value_counts(dropna=False).plot(kind='bar')
     plt.ylabel('Number of data points')
     plt.xlabel('final result')
-    plt.show()
+    # plt.show()
     st.pyplot()
  
 def two(final_df):
@@ -246,32 +248,28 @@ def two(final_df):
     plt.figure(figsize=(10,10))
     plt.pie(counts, labels=counts.index, colors=['green', 'blue', 'red'])
     plt.title('Pie chart showing counts for\nstudentInfo imd_band categories')
-    plt.show()
+    # plt.show()
     st.pyplot()
  
 def three(final_df):
     sns.set()
     final_df.groupby(['imd_band_first','final_result_first']).size().unstack().plot(kind='bar', stacked=True, figsize=(12,8))
-    plt.show()
+    # plt.show()
     st.pyplot()
  
 def main():
     
+
     st.set_page_config(page_title="Meilleur site", page_icon=":mortar_board:")
     st.header("Projet Learning Analityc")    
     
     dataset_dict = print_load_data()
-    st.sidebar.write('<p style="color:red; font-size: 12px;">* : facultatif</p>', unsafe_allow_html=True)
 
-    
-    id_student = st.sidebar.text_input("Votre identifiant d'étudiant ?", "")
-    
-    if not id_student:
-        st.warning("Veuillez rentre un identifiant d'étudiant")
-        st.stop()
+    id_student = st.session_state.id_student
+    st.sidebar.write(f"Bonjour n°{id_student}")
     
     st.balloons()
-    
+
     student_registration = dataset_dict["studentRegistration"][dataset_dict["studentRegistration"]["id_student"] == int(id_student)]
     
     list_module = student_registration["code_module"].unique()
@@ -299,7 +297,7 @@ def main():
     st.subheader("Explorer")    
     graph_to_show = st.selectbox("", graph)
 
-    if graph_to_show == "Description de l'étudiant":
+    with st.expander("Description de l'étudiant :"):
         
         final_df_2 = final_df[["gender_first", "region_first", "highest_education_first", "imd_band_first", "age_band_first"]]
         final_df_2.rename(columns = {'gender_first':'Genre', 'region_first':'Région', 'Plus haut diplôme':'Genre', 'imd_band_first':'Niveau de pauvreté', 'age_band_first':"Tranche d'âge"}, inplace = True)
@@ -308,18 +306,18 @@ def main():
         student_vle = filtre_par_3(dataset_dict["studentVle"], id_student, code_module, code_presentation)
         student_vle.groupby(['code_module']).sum()["sum_click"].plot(kind='bar', stacked=True, figsize=(12,8), title="Nombre de clique total par module")
         plt.ylabel("Nombre de clique total")
-        plt.show()
+        # plt.show()
         st.pyplot()
         
-    elif graph_to_show == "Description des modules":
-        
+    with st.expander("Description des modules :"):    
+
         dataset_dict["studentVle"].groupby(['code_module']).mean()["sum_click"].plot(kind='bar', stacked=True, figsize=(12,8), title="Nombre de clique moyen par module")
         plt.ylabel("Nombre de clique moyen")
-        plt.show()
+        # plt.show()
         st.pyplot()
 
-    elif graph_to_show == "Prédiction":
-        
+    with st.expander("Prédiction :"):        
+
         graph = ('Table des données', '1er Graph', '2eme Graph', '3eme Graph')
         graph_to_show = st.selectbox("Quel graphique à afficher ?", graph)
     
@@ -355,6 +353,7 @@ if __name__ == '__main__':
                     st.success("Succesfully logged in! :tada:")
                     st.session_state.logged_in = True
                     st.session_state.key = 'OK'
+                    st.session_state.id_student = my_user
                     with st.spinner("Redirecting to application..."):
                         time.sleep(1)
                         print("okkkkkk")
