@@ -12,7 +12,6 @@ import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.impute import SimpleImputer
 
-import seaborn as sns
 import matplotlib.pyplot as plt
 import time
 from zipfile import ZipFile
