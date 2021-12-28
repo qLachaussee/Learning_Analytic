@@ -13,10 +13,12 @@ from sklearn.impute import SimpleImputer
 
 import seaborn as sns
 import matplotlib.pyplot as plt
+from itertools import cycle, islice
 import time
 from zipfile import ZipFile
 
 st.set_option('deprecation.showPyplotGlobalUse', False)
+sns.set()
 
 id_student = pickle.load(open( "id_student.p", "rb" ) )
 users = {str(id):"mdp" for id in id_student.unique()}
@@ -187,7 +189,7 @@ def cleanAndMap(final_df, encode=True):
         'imd_band_first': {
             '0-100%': 0, #mettre 50 ?
             '0-10%': 5,
-            '10-20': 15,
+            '10-20%': 15,
             '20-30%': 25,
             '30-40%': 35,
             '40-50%': 45,
@@ -212,7 +214,7 @@ def cleanAndMap(final_df, encode=True):
         
     return categorical_encoders
 
-def filtre_par_3(table, id_student, code_module, code_presentation):
+def filtre_par_3(table, code_module, code_presentation, id_student=None):
     '''retourne un booléen'''
     if type(code_module) == str:
         if type(code_presentation) == str:
@@ -228,104 +230,237 @@ def filtre_par_3(table, id_student, code_module, code_presentation):
         else:
             filtre = (table['code_module'].isin(list(code_module))) & \
                     (table['code_presentation'].isin(list(code_presentation)))
-    return table[(table["id_student"] == int(id_student)) & (filtre)]
-    
+    if id_student == None:
+        return table[filtre]
+    else:
+        return table[(table["id_student"] == int(id_student)) & (filtre)]
 
-def one(final_df):
+def one(df):
     plt.figure(figsize=(10,8))
-    final_df['final_result_first'].value_counts(dropna=False).plot(kind='bar')
-    plt.ylabel('Number of data points')
-    plt.xlabel('final result')
-    # plt.show()
+    df['final_result_first'].value_counts(dropna=False).plot(kind='bar')
+    plt.ylabel("Nombre d'étudiant")
+    plt.xlabel('Résultat')
     st.pyplot()
  
-def two(final_df):
-    counts = final_df['imd_band_first'].value_counts(dropna=False)
+def two(df):
+    counts = df['imd_band_first'].value_counts(dropna=False)
     plt.figure(figsize=(10,10))
     plt.pie(counts, labels=counts.index, colors=['green', 'blue', 'red'])
     plt.title('Pie chart showing counts for\nstudentInfo imd_band categories')
-    # plt.show()
     st.pyplot()
  
-def three(final_df):
+def three(df):
     sns.set()
-    final_df.groupby(['imd_band_first','final_result_first']).size().unstack().plot(kind='bar', stacked=True, figsize=(12,8))
-    # plt.show()
+    df.groupby(['imd_band_first','final_result_first']).size().unstack().plot(kind='bar', stacked=True, figsize=(12,8))
     st.pyplot()
  
 def main():
     
-
     st.set_page_config(page_title="Meilleur site", page_icon=":mortar_board:")
     st.header("Projet Learning Analityc")    
     
     dataset_dict = st.session_state.data
 
     id_student = int(st.session_state.id_student)
-    st.sidebar.write(f"Bonjour n°{id_student}")
+    st.sidebar.markdown(f"<p style='text-align:center; font-size:1.8rem;'><b>Bonjour n°{id_student}</b></p>", unsafe_allow_html=True)
     
     st.balloons()
 
     student_registration = dataset_dict["studentRegistration"][dataset_dict["studentRegistration"]["id_student"] == id_student]
     
-    list_module = student_registration["code_module"].unique()
-    code_module = st.sidebar.multiselect("Quels modules à analyser ? *", list_module, default=list_module)
+    all_module = student_registration["code_module"].unique()
+    code_module = st.sidebar.multiselect("Quels modules à analyser ?", all_module, default=all_module)
     
     if not code_module:
         st.warning("Veuillez sélectionner un ou plusieurs module(s)")
         st.stop()
     
-    list_presentation = student_registration[student_registration["code_module"].isin(code_module)]["code_presentation"].unique()
-    code_presentation = st.sidebar.multiselect("Quelle présentation à analyser ? *", list_presentation, default=list_presentation)
+    all_presentation = code_presentation = student_registration[student_registration["code_module"].isin(code_module)]["code_presentation"].unique()
+    code_presentation = st.sidebar.multiselect("Quelle présentation à analyser ?", all_presentation, default=all_presentation)
 
     if not code_presentation:
         st.warning("Veuillez sélectionner une ou plusieurs présentation(s)")
         st.stop()
-        
-    oneCourse = getOneCourse(dataset_dict, code_module, code_presentation)
-    final_df = restructure(oneCourse, 14)
-    encoders = cleanAndMap(final_df, encode=False)
-    
-    final_df = final_df[final_df.index == id_student]
 
+    # df_all = getOneCourse(dataset_dict, all_module, all_presentation)
+    # df_all = restructure(df_all, 14)
+
+    df_filtered_MP = getOneCourse(dataset_dict, code_module, code_presentation)
+    df_filtered_MP = restructure(df_filtered_MP, 14)
+    df_filtered_MPS = df_filtered_MP[df_filtered_MP.index == id_student]
+
+    # encoders = cleanAndMap(df_filtered_MPS, encode=False)
 
     graph = ("Description de l'étudiant", "Description des modules", "Prédiction")
     st.subheader("Explorer")    
     graph_to_show = st.selectbox("", graph)
 
-    with st.expander("Description de l'étudiant :"):
+    if graph_to_show == "Description de l'étudiant":
         
-        final_df_2 = final_df[["gender_first", "region_first", "highest_education_first", "imd_band_first", "age_band_first"]]
-        final_df_2.rename(columns = {'gender_first':'Genre', 'region_first':'Région', 'Plus haut diplôme':'Genre', 'imd_band_first':'Niveau de pauvreté', 'age_band_first':"Tranche d'âge"}, inplace = True)
-        st.dataframe(final_df_2.T)
-                
-        student_vle = filtre_par_3(dataset_dict["studentVle"], id_student, code_module, code_presentation)
-        student_vle.groupby(['code_module']).sum()["sum_click"].plot(kind='bar', stacked=True, figsize=(12,8), title="Nombre de clique total par module")
-        plt.ylabel("Nombre de clique total")
-        # plt.show()
-        st.pyplot()
+        df_filtered_MPS_desc = df_filtered_MPS[["gender_first", "region_first", "highest_education_first", "imd_band_first", "age_band_first", "final_result_first"]].copy()
+        df_filtered_MPS_desc.rename(columns = {'gender_first':'Genre', 'region_first':'Région', 'highest_education_first':'Plus haut diplôme', 'imd_band_first':'Niveau de pauvreté', 'age_band_first':"Tranche d'âge", "final_result_first": "Résultat final"}, inplace = True)
+        st.dataframe(df_filtered_MPS_desc.T)
         
-    with st.expander("Description des modules :"):    
+        with st.expander("Nombre de clique moyen :"):    
 
-        dataset_dict["studentVle"].groupby(['code_module']).mean()["sum_click"].plot(kind='bar', stacked=True, figsize=(12,8), title="Nombre de clique moyen par module")
-        plt.ylabel("Nombre de clique moyen")
-        # plt.show()
-        st.pyplot()
+            plt.subplot(1,2,1)
+            student_vle_filtered_MP = filtre_par_3(dataset_dict["studentVle"], code_module, code_presentation)
+            df = student_vle_filtered_MP.groupby(['code_module']).mean()["sum_click"]
+            df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+            plt.ylabel("Nombre de clique moyen")
+            plt.xlabel("")
+            plt.title("De la promotion")
+            plt.ylim([0,10])
 
-    with st.expander("Prédiction :"):        
+            plt.subplot(1,2,2)
+            student_vle_filtered_MPS = filtre_par_3(dataset_dict["studentVle"], code_module, code_presentation, id_student=id_student)
+            df = student_vle_filtered_MPS.groupby(['code_module']).mean()["sum_click"]
+            df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+            plt.xlabel("")
+            plt.title("De l'étudiant")
+            plt.ylim([0,10])
 
-        graph = ('Table des données', '1er Graph', '2eme Graph', '3eme Graph')
-        graph_to_show = st.selectbox("Quel graphique à afficher ?", graph)
+            plt.tight_layout()
+            st.pyplot()
+
+        with st.expander("Note moyenne par module :"):    
+
+            student_assessment = dataset_dict["assessments"].merge(dataset_dict["studentAssessment"])
+            student_assessment_filtered_MP = filtre_par_3(student_assessment, code_module, code_presentation)
+            student_assessment_filtered_MPS = filtre_par_3(student_assessment, code_module, code_presentation, id_student=id_student)
+            
+            plt.subplot(1,2,1)
+            df = student_assessment_filtered_MP.groupby(['code_module']).mean()["score"]
+            df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+            plt.ylabel("Note moyenne")
+            plt.xlabel("")
+            plt.title("De la promotion")
+            plt.ylim([0,100])
+
+            plt.subplot(1,2,2)
+            df = student_assessment_filtered_MPS.groupby(['code_module']).mean()["score"]
+            df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+            plt.xlabel("")
+            plt.title("De l'étudiant")
+            plt.ylim([0,100])
+
+            st.pyplot()
+
+        with st.expander("Note moyenne par module selon la date :"):    
+            
+            list_presentation = student_assessment_filtered_MP.code_presentation.sort_values().unique()
+            i = 1
+            for prez in list_presentation:
+                plt.subplot(len(list_presentation), 2, i)
+                df = student_assessment_filtered_MP[student_assessment_filtered_MP.code_presentation == prez].groupby(['code_module']).mean()["score"]
+                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                plt.ylabel(prez.replace("B", " Février").replace("J", " Octobre"))
+                plt.xlabel("")
+                plt.title("De la promotion")
+                plt.ylim([0,100])
+
+                plt.subplot(len(list_presentation), 2, i+1)
+                df = student_assessment_filtered_MPS[student_assessment_filtered_MPS.code_presentation == prez].groupby(['code_module']).mean()["score"]
+                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                plt.title("De l'étudiant")
+                plt.xlabel("")
+                plt.ylim([0,100])
+
+                i+=2
+
+            plt.tight_layout()
+            st.pyplot()
+        
+        with st.expander("Note moyenne par module selon le type d'évaluation :"):    
+            
+            list_assessment = student_assessment_filtered_MP.assessment_type.unique()
+            i = 1
+            for asses in list_assessment:
+                plt.subplot(len(list_assessment), 2, i)
+                df = student_assessment_filtered_MP[student_assessment_filtered_MP.assessment_type == asses].groupby(['code_module']).mean()["score"]
+                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                plt.ylabel(asses.replace("B", " Février").replace("J", " Octobre"))
+                plt.xlabel("")
+                plt.title("De la promotion")
+                plt.ylim([0,100])
+
+                plt.subplot(len(list_assessment), 2, i+1)
+                df = student_assessment_filtered_MPS[student_assessment_filtered_MPS.assessment_type == asses].groupby(['code_module']).mean()["score"]
+                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                plt.title("De l'étudiant")
+                plt.xlabel("")
+                plt.ylim([0,100])
+
+                i+=2
+
+            plt.tight_layout()
+            st.pyplot()
+
+        with st.expander("Résultat final par niveau de pauvreté :"):    
+        #     plt.subplot(1,2,1)
+        #     counts = df_filtered_MP['imd_band_first'].value_counts(dropna=False)
+        #     plt.pie(counts, labels=counts.index, colors=['green', 'blue', 'red'])
+        #     plt.title('Proportion du niveau de pauvreté')
+
+        #     plt.subplot(1,2,2)
+        #     counts = df_filtered_MPS['imd_band_first'].value_counts(dropna=False)
+        #     plt.pie(counts, labels=counts.index, colors=['green', 'blue', 'red'])
+        #     plt.title("Proportion du niveau de pauvreté de l'étudiant")
+            
+        #     plt.tight_layout()
+        #     st.pyplot()
+
+            df_filtered_MP.groupby(['imd_band_first','final_result_first']).size().unstack().plot(kind='bar', stacked=True, figsize=(12,8))
+            plt.xlabel("Niveau de pauvreté")
+            plt.ylabel("Nombre d'étudiant")
+            plt.title("Résultat final de la promotion")
+            st.pyplot()
+            st.write("Résultat final de l'étudiant")
+            st.write(df_filtered_MPS_desc[["Niveau de pauvreté", "Résultat final"]].reset_index(drop=True))
     
-        if graph_to_show == "Table des données":
+    if graph_to_show == "Description des modules":
+        
+        student_vle_filtered_MP = filtre_par_3(dataset_dict["studentVle"], code_module, code_presentation)
+        student_vle_filtered_MP.groupby(['code_module']).mean()["sum_click"].plot(kind='bar', stacked=True, figsize=(12,8))
+        plt.title("Nb de clique moyen par module")
+        plt.ylabel("Nb de clique moyen")
+        st.pyplot()
+
+        with st.expander("Note moyenne par module selon la date :"):    
+            
+            assessment_filtered_MP = filtre_par_3(dataset_dict["assessments"], code_module, code_presentation)
+            student_assessment_filtered_MP = assessment_filtered_MP.merge(dataset_dict["studentAssessment"])
+            for i, prez in enumerate(np.sort(student_assessment_filtered_MP.code_presentation.unique())):
+                plt.subplot(2, 2, i+1)
+                student_assessment_filtered_MP[student_assessment_filtered_MP.code_presentation == prez].groupby(['code_module']).mean()["score"].plot(kind='bar', stacked=True, figsize=(12,8))
+                
+                plt.title(prez.replace("B", " Février").replace("J", " Octobre"))
+                plt.xlabel("")
+                plt.ylim([0,100])
+
+            plt.tight_layout()
+            st.pyplot()
+        
+        with st.expander("Note moyenne par module selon le type d'évaluation :"):    
+            
+            assessment_filtered_MP = filtre_par_3(dataset_dict["assessments"], code_module, code_presentation)
+            student_assessment_filtered_MP = assessment_filtered_MP.merge(dataset_dict["studentAssessment"])
+            for i, prez in enumerate(student_assessment_filtered_MP.assessment_type.unique()):
+                plt.subplot(2, 2, i+1)
+                student_assessment_filtered_MP[student_assessment_filtered_MP.assessment_type == prez].groupby(['code_module']).mean()["score"].plot(kind='bar', stacked=True, figsize=(12,8))
+                
+                plt.title(prez.replace("B", " Février").replace("J", " Octobre"))
+                plt.xlabel("")
+                plt.ylim([0,100])
+
+            plt.tight_layout()
+            st.pyplot()
+
+    if graph_to_show == "Prédiction":
+
+        with st.expander("Table des données :"):    
             # st.dataframe(final_df)
             st.write('<p style="color:grey;line-height:14px;"><br><br><br><br><br>&nbsp &nbsp &nbsp &nbsp.__(.)< (COIN COIN) <br>&nbsp &nbsp &nbsp &nbsp \___)<br>~~~~~~~~~~~~~~~~~~', unsafe_allow_html=True)
-        elif graph_to_show == "1er Graph":
-            one(final_df)
-        elif graph_to_show == "2eme Graph":
-            two(final_df)
-        elif graph_to_show == "3eme Graph":
-            three(final_df)
     
     st.sidebar.caption("Quentin LACHAUSSEE")
     st.sidebar.caption("Adrien GOLEBIEWSKI")
