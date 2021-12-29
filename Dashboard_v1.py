@@ -360,7 +360,10 @@ def main():
 
                 plt.subplot(len(list_presentation), 2, i+1)
                 df = student_assessment_filtered_MPS[student_assessment_filtered_MPS.code_presentation == prez].groupby(['code_module']).mean()["score"]
-                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                try:
+                    df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                except:
+                    print("Aucune donnée")
                 plt.title("De l'étudiant")
                 plt.xlabel("")
                 plt.ylim([0,100])
@@ -385,7 +388,10 @@ def main():
 
                 plt.subplot(len(list_assessment), 2, i+1)
                 df = student_assessment_filtered_MPS[student_assessment_filtered_MPS.assessment_type == asses].groupby(['code_module']).mean()["score"]
-                df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                try:
+                    df.plot(kind='bar', stacked=True, figsize=(12,8), color=list(islice(cycle(['b', 'r', 'g', 'y', 'k']), None, len(df))))
+                except:
+                    print("Aucune donnée")
                 plt.title("De l'étudiant")
                 plt.xlabel("")
                 plt.ylim([0,100])
