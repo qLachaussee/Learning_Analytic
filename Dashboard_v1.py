@@ -23,7 +23,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 st.set_option('deprecation.showPyplotGlobalUse', False)
 sns.set()
 
-id_student = pickle.load(open( "id_student_petit.p", "rb" ) )
+id_student = pickle.load(open( "id_student.p", "rb" ) )
 users = {str(id):"mdp" for id in id_student.unique()}
 
 @st.experimental_memo(suppress_st_warning=True, show_spinner=False)
@@ -559,12 +559,21 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        modeles = ("Arbre", "Forêt aléatoire")
+        modeles = ("Arbre", "Forêt aléatoire", "K Voisins")
         st.subheader("Choisir un modèle :")
         model_to_show = st.selectbox("", modeles)
         
         if model_to_show == "Arbre":
-            model = load_model('best_tree')
+            model = load_model("Best DecisionTreeClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "Forêt aléatoire":
+            model = load_model("Best DecisionTreeClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "K Voisins":
+            model = load_model("Best KNeighborsClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "Ada Boost":
+            model = load_model("Best AdaBoostClassifier")
             decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
     
     st.sidebar.caption("Quentin LACHAUSSEE")
@@ -591,7 +600,7 @@ if __name__ == '__main__':
                     st.session_state.key = 'OK'
                     st.session_state.id_student = my_user
                     with st.spinner("Redirecting to application..."):
-                        st.session_state.data = pickle.load(open("dataset_dict_petit.p", "rb" ))
+                        st.session_state.data = pickle.load(open("dataset_dict.p", "rb" ))
                         time.sleep(1)
                         print("okkkkkk")
                         st.experimental_rerun()
