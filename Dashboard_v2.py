@@ -1,21 +1,25 @@
 import streamlit as st
-from sklearn.impute import SimpleImputer
 import numpy as np
 import pandas as pd
 import pickle
-
+import joblib
 import re
-
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
-from sklearn.impute import SimpleImputer
-
 import seaborn as sns
 import matplotlib.pyplot as plt
 from itertools import cycle, islice
 import time
 
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder
+from sklearn.impute import SimpleImputer
+from sklearn.compose import ColumnTransformer
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import plot_confusion_matrix, plot_roc_curve, plot_precision_recall_curve, roc_auc_score, accuracy_score, recall_score, f1_score
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
 st.set_option('deprecation.showPyplotGlobalUse', False)
 sns.set()
 
@@ -234,29 +238,95 @@ def filtre_par_3(table, code_module, code_presentation, id_student=None):
     else:
         return table[(table["id_student"] == int(id_student)) & (filtre)]
 
-def one(df):
-    plt.figure(figsize=(10,8))
-    df['final_result_first'].value_counts(dropna=False).plot(kind='bar')
-    plt.ylabel("Nombre d'étudiant")
-    plt.xlabel('Résultat')
-    st.pyplot()
- 
-def two(df):
-    counts = df['imd_band_first'].value_counts(dropna=False)
-    plt.figure(figsize=(10,10))
-    plt.pie(counts, labels=counts.index, colors=['green', 'blue', 'red'])
-    plt.title('Pie chart showing counts for\nstudentInfo imd_band categories')
-    st.pyplot()
- 
-def three(df):
-    sns.set()
-    df.groupby(['imd_band_first','final_result_first']).size().unstack().plot(kind='bar', stacked=True, figsize=(12,8))
-    st.pyplot()
- 
+def split_labels(df):
+    # Retirer la colonne de résultat final d'une table et retourner les deux colonnes.
+    values = df.drop('final_result', axis=1)
+    labels = df['final_result'].copy()
+    return values, labels
+
+def pipeline(df):
+    # Les données VLE sont sélectionnées séparément des autres données numériques car la stratégie de remplissage
+    # doit être différente
+    vle_types = df.filter(
+        regex='_uniq_visits$', axis=1).columns.values.tolist() + df.filter(
+            regex='_interactions$', axis=1).columns.values.tolist()
+    #toutes les autres colomnes numériques
+    other_numeric = [
+        'imd_band', 'age_band', 'num_of_prev_attempts', 'studied_credits',
+        'CMA', 'TMA'
+    ]
+
+    # Imputers
+    # Les données VLE sont remplies de 0 car c'est ce que les données représentent réellement.
+    # Si une valeur est NA, cela signifie que l'utilisateur n'a pas interagi avec/visité cette activité.
+    df[vle_types] = df[vle_types].fillna(0)
+    # Les autres données numériques sont remplies avec la moyenne
+    df[other_numeric] = df[other_numeric].fillna(
+        df[other_numeric].mean(axis=0)+1)
+
+    # Transformateur de colonnes
+    # Oneencoder encode les données catégorielles restantes.
+    # StandardEncode met à l'échelle toutes les données numériques
+    ct = ColumnTransformer([('cat', OneHotEncoder(), [
+        'code_module', 'code_presentation', 'gender', 'region',
+        'highest_education'
+    ]), ('std_scaler', StandardScaler(), vle_types + other_numeric)],
+                           remainder='drop')
+
+    return ct.fit_transform(df)
+
+def prepare_labels(labels):
+    # Comme nous ne prévoyons que des succès et des échecs, nous réétiquetons la disctinction en tant que
+    # réussite et retrait comme échec
+    # Nous utilisons 1 pour représenter la réussite et 0 pour l'échec pour les fonctions de la métrique de notation.
+    lab_dict = {'Pass': 1, 'Fail': 0, 'Withdrawn': 0, 'Distinction': 1}
+    return labels.replace(lab_dict)
+
+def load_model(file):
+    return joblib.load(file)
+
+def load_file(file):
+    return pickle.load(open(file, "rb"))
+
+def decision_precision(model_name, model, student_set, student_index, student_values, student_labels, test_values, test_labels):
+    # Print testing scores
+    st.subheader(f"\nDécision {model_name}\n")
+    for i in range(len(student_index)):
+        table = student_set.reset_index()
+        st.write(f"Pour le module {table.loc[i,'code_module']} et la presentation {table.loc[i,'code_presentation']}, la prédiction est :")
+        if model.predict(student_values)[i] == 1:
+            st.markdown("<b style='font-size:1.5rem;color:green;'>Pass</b>", unsafe_allow_html=True)
+        else:
+            st.markdown("<b style='font-size:1.5rem;color:red;'>Fail</b>", unsafe_allow_html=True)
+    
+    st.subheader(f"\nPrécision {model_name}\n")
+    predictions = model.predict(test_values)
+    predictions_proba = model.predict_proba(test_values)[:, 1]
+    
+    st.write('Accuracy :', accuracy_score(test_labels, predictions).round(2))
+    st.write('Recall : ', recall_score(test_labels, predictions).round(2))
+    st.write('F1 : ', f1_score(test_labels, predictions).round(2))
+    st.write('ROC AUC : ', roc_auc_score(test_labels, predictions_proba).round(2))
+
+    with st.expander("Matrice de confusion :"):    
+        plot_confusion_matrix(model, test_values, test_labels, display_labels=["Fail", "Pass"], cmap="Blues")
+        st.pyplot()
+
+    with st.expander("Courbe ROC :"):    
+        plot_roc_curve(model, test_values, test_labels)
+        st.pyplot()
+
+    with st.expander("Courbe de précision :"):    
+        plot_precision_recall_curve(model, test_values, test_labels)
+        st.pyplot()
+
+    with st.expander("Dernière preuve irréfutable de la qualité du modèle :"):
+        st.write('<p style="color:grey;line-height:14px;"><br><br><br><br><br>&nbsp &nbsp &nbsp &nbsp.__(.)< (COIN COIN) <br>&nbsp &nbsp &nbsp &nbsp \___)<br>~~~~~~~~~~~~~~~~~~', unsafe_allow_html=True)
+
 def main():
     
     st.set_page_config(page_title="Meilleur site", page_icon=":mortar_board:")
-    st.header("Projet Learning Analityc")    
+    st.header("Projet Learning Analytics")    
     
     dataset_dict = st.session_state.data
 
@@ -291,7 +361,7 @@ def main():
     # encoders = cleanAndMap(df_filtered_MPS, encode=False)
 
     graph = ("Description de l'étudiant", "Description des modules", "Prédiction")
-    st.subheader("Explorer")    
+    st.subheader("Explorer :")    
     graph_to_show = st.selectbox("", graph)
 
     if graph_to_show == "Description de l'étudiant":
@@ -463,9 +533,48 @@ def main():
 
     if graph_to_show == "Prédiction":
 
-        with st.expander("Table des données :"):    
-            # st.dataframe(final_df)
-            st.write('<p style="color:grey;line-height:14px;"><br><br><br><br><br>&nbsp &nbsp &nbsp &nbsp.__(.)< (COIN COIN) <br>&nbsp &nbsp &nbsp &nbsp \___)<br>~~~~~~~~~~~~~~~~~~', unsafe_allow_html=True)
+        master = load_file("master.p")
+
+        # Crer un  train test split
+        train_set, test_set = train_test_split(master, test_size=0.2, random_state=20)
+
+        # Séparer les étiquettes
+        train_values, train_labels = split_labels(train_set)
+        test_values, test_labels = split_labels(test_set)
+
+        all_values, all_labels = split_labels(master)
+        student_set = all_values.reset_index(drop=True)[all_values.reset_index(drop=True).id_student==id_student]
+        student_set = student_set[(student_set.code_module.isin(code_module)) & (student_set.code_presentation.isin(code_presentation))]
+        student_index = student_set.index
+
+
+        # Pipeline les données pour préparer la formation et les tests
+        train_values = pipeline(train_values)
+        train_labels = prepare_labels(train_labels)
+        test_values = pipeline(test_values)
+        test_labels = prepare_labels(test_labels)
+
+        all_values = pipeline(all_values)
+        all_labels = prepare_labels(all_labels)
+        student_values = all_values[student_index,:]
+        student_labels = all_labels[student_index]
+
+        modeles = ("Arbre", "Forêt aléatoire", "K Voisins")
+        st.subheader("Choisir un modèle :")
+        model_to_show = st.selectbox("", modeles)
+        
+        if model_to_show == "Arbre":
+            model = load_model("Best DecisionTreeClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "Forêt aléatoire":
+            model = load_model("Best DecisionTreeClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "K Voisins":
+            model = load_model("Best KNeighborsClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
+        elif model_to_show == "Ada Boost":
+            model = load_model("Best AdaBoostClassifier")
+            decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
     
     st.sidebar.caption("Quentin LACHAUSSEE")
     st.sidebar.caption("Adrien GOLEBIEWSKI")
