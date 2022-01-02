@@ -23,7 +23,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 st.set_option('deprecation.showPyplotGlobalUse', False)
 sns.set()
 
-id_student = pickle.load(open( "id_student.p", "rb" ) )
+id_student = pickle.load(open( "id_student_petit.p", "rb" ) )
 users = {str(id):"mdp" for id in id_student.unique()}
 
 @st.experimental_memo(suppress_st_warning=True, show_spinner=False)
@@ -600,7 +600,7 @@ if __name__ == '__main__':
                     st.session_state.key = 'OK'
                     st.session_state.id_student = my_user
                     with st.spinner("Redirecting to application..."):
-                        st.session_state.data = pickle.load(open("dataset_dict.p", "rb" ))
+                        st.session_state.data = pickle.load(open("dataset_dict_petit.p", "rb" ))
                         time.sleep(1)
                         print("okkkkkk")
                         st.experimental_rerun()
