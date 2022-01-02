@@ -559,7 +559,7 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        modeles = ("Arbre", "Forêt aléatoire", "K Voisins")
+        modeles = ("Arbre", "Ada Boost", "K Voisins", "Forêt aléatoire")
         st.subheader("Choisir un modèle :")
         model_to_show = st.selectbox("", modeles)
         
