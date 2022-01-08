@@ -567,7 +567,7 @@ def main():
             model = load_model("Best DecisionTreeClassifier")
             decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
         elif model_to_show == "Forêt aléatoire":
-            model = load_model("Best DecisionTreeClassifier")
+            model = load_model("Best RandomForestClassifier")
             decision_precision(model_to_show, model, student_set, student_index, student_values, student_labels, test_values, test_labels)
         elif model_to_show == "K Voisins":
             model = load_model("Best KNeighborsClassifier")
