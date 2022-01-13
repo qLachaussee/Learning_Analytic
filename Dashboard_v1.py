@@ -99,9 +99,7 @@ def getOneCourse(dataset_dict, code_module, code_presentation):
                               how='inner', on=['id_student', 'code_presentation', 'code_module'])
     
     combined_df = studentAssessmentInfo.append(studentVleInfo)
-    del combined_df['code_module']
-    del combined_df['code_presentation']
-    del combined_df['id_assessment']
+
     combined_df = combined_df.sort_values(by=['date'])
 
     status_markdown.text("")
@@ -117,6 +115,9 @@ def restructure(oneCourse, days):
     en ne conservant que les données des deux premières semaines
     
     '''
+    # del oneCourse['code_module']
+    # del oneCourse['code_presentation']
+    # del oneCourse['id_assessment']
     # La prédiction n'est intéressante que lorsqu'il s'agit du début du cours, et non de la fin !
     first14Days_oneCourse = oneCourse[oneCourse['date'] <= days]
     # supprimer ceux qui se sont désinscrits avant le début car nous ne pouvons rien faire pour eux.
@@ -127,7 +128,7 @@ def restructure(oneCourse, days):
     # supprimer le type d'activité NaN
     activity_types_df = [x for x in activity_types_df if type(x) == str]
     #  nous voulons un étudiant par ligne (la manière facile)
-    final_df = first14Days_oneCourse.groupby('id_student').agg({
+    final_df = first14Days_oneCourse.groupby(['id_student', 'code_module']).agg({
         'score': [np.mean, np.sum],
         'date_submitted': [np.mean],
         'is_banked': [np.sum],
@@ -356,7 +357,7 @@ def main():
 
     df_filtered_MP = getOneCourse(dataset_dict, code_module, code_presentation)
     df_filtered_MP = restructure(df_filtered_MP, 14)
-    df_filtered_MPS = df_filtered_MP[df_filtered_MP.index == id_student]
+    df_filtered_MPS = df_filtered_MP.reset_index()[df_filtered_MP.reset_index().id_student==id_student]
 
     # encoders = cleanAndMap(df_filtered_MPS, encode=False)
 
@@ -366,11 +367,11 @@ def main():
 
     if graph_to_show == "Description de l'étudiant":
         
-        df_filtered_MPS_desc = df_filtered_MPS[["gender_first", "region_first", "highest_education_first", "imd_band_first", "age_band_first", "final_result_first"]].copy()
-        df_filtered_MPS_desc.rename(columns = {'gender_first':'Genre', 'region_first':'Région', 'highest_education_first':'Plus haut diplôme', 'imd_band_first':'Niveau de pauvreté', 'age_band_first':"Tranche d'âge", "final_result_first": "Résultat final"}, inplace = True)
-        st.dataframe(df_filtered_MPS_desc.T)
+        df_filtered_MPS_desc = df_filtered_MPS[["code_module", "gender_first", "region_first", "highest_education_first", "imd_band_first", "age_band_first", "final_result_first"]].copy()
+        df_filtered_MPS_desc.rename(columns = {'code_module':'Module', 'gender_first':'Genre', 'region_first':'Région', 'highest_education_first':'Plus haut diplôme', 'imd_band_first':'Niveau de pauvreté', 'age_band_first':"Tranche d'âge", "final_result_first": "Résultat final"}, inplace = True)
+        st.dataframe(df_filtered_MPS_desc.set_index("Module").T)
         
-        with st.expander("Nombre de clique moyen :"):    
+        with st.expander("Nombre de clique moyen :"):  
 
             plt.subplot(1,2,1)
             student_vle_filtered_MP = filtre_par_3(dataset_dict["studentVle"], code_module, code_presentation)
