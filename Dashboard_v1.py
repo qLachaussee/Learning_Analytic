@@ -492,7 +492,7 @@ def main():
             plt.title("Résultat final de la promotion")
             st.pyplot()
             st.write("Résultat final de l'étudiant")
-            st.write(df_filtered_MPS_desc[["Niveau de pauvreté", "Résultat final"]].reset_index(drop=True))
+            st.write(df_filtered_MPS_desc[["Niveau de pauvreté", "Module", "Résultat final"]].reset_index(drop=True))
     
     if graph_to_show == "Description des modules":
         
