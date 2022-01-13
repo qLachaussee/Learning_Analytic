@@ -48,6 +48,11 @@ dataset_dict_petit = {
 pickle.dump(dataset_dict_petit, open("dataset_dict_petit.p", "wb"))
 
 #%%
+student = pickle.load(open("id_student_petit.p", "rb"))
+master = pickle.load(open("master.p", "rb"))
+master[master.id_student.isin(student)].id_student.to_csv("list_student.csv", index=False)
+
+#%%
 from zipfile import ZipFile
 with ZipFile("dataset_dict.zip", 'w') as zip:
     zip.write('dataset_dict.p')
@@ -122,9 +127,7 @@ def getOneCourse(dataset_dict, code_module, code_presentation):
                               how='inner', on=['id_student', 'code_presentation', 'code_module'])
     
     combined_df = studentAssessmentInfo.append(studentVleInfo)
-    del combined_df['code_module']
-    del combined_df['code_presentation']
-    del combined_df['id_assessment']
+    
     combined_df = combined_df.sort_values(by=['date'])
 
     return combined_df
@@ -135,6 +138,9 @@ def restructure(oneCourse, days):
     en ne conservant que les données des deux premières semaines
     
     '''
+    # del oneCourse['code_module']
+    # del oneCourse['code_presentation']
+    # del oneCourse['id_assessment']
     # La prédiction n'est intéressante que lorsqu'il s'agit du début du cours, et non de la fin !
     first14Days_oneCourse = oneCourse[oneCourse['date'] <= days]
     # supprimer ceux qui se sont désinscrits avant le début car nous ne pouvons rien faire pour eux.
@@ -145,7 +151,7 @@ def restructure(oneCourse, days):
     # supprimer le type d'activité NaN
     activity_types_df = [x for x in activity_types_df if type(x) == str]
     #  nous voulons un étudiant par ligne (la manière facile)
-    final_df = first14Days_oneCourse.groupby('id_student').agg({
+    final_df = first14Days_oneCourse.groupby(['id_student', 'code_module']).agg({
         'score': [np.mean, np.sum],
         'date_submitted': [np.mean],
         'is_banked': [np.sum],
@@ -213,7 +219,7 @@ df_filtered_S = df_all[df_all.index == id_student]
 
 df_filtered_MP = getOneCourse(dataset_dict, code_module, code_presentation)
 df_filtered_MP = restructure(df_filtered_MP, 14)
-df_filtered_MPS = df_filtered_MP[df_filtered_MP.index == id_student]
+df_filtered_MPS = df_filtered_MP.reset_index()[df_filtered_MP.reset_index().id_student==id_student]
 
 #%%
 
