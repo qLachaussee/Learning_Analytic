@@ -561,7 +561,7 @@ def main():
         student_labels = all_labels[student_index]
 
         try:
-            joblib.load("Best DecisionTreeClassifier")
+            test = joblib.load("Best DecisionTreeClassifier")
             modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
         except OSError as e:
             modeles = ("Ada Boost", "K Voisins", "Arbre")
