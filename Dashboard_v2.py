@@ -560,11 +560,10 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        try:
-            test = joblib.load("Best DecisionTreeClassifier")
-            modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
-        except OSError as e:
+        if len(user) == 28785:
             modeles = ("Ada Boost", "K Voisins", "Arbre")
+        else:
+            modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
         st.write(f"Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
