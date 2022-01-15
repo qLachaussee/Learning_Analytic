@@ -560,8 +560,14 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        modeles = ("Arbre", "Ada Boost", "K Voisins", "Forêt aléatoire")
+        try:
+            load_model("Best DecisionTreeClassifier")
+            modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
+        except:
+            modeles = ("Ada Boost", "K Voisins", "Arbre")
+        
         st.subheader("Choisir un modèle :")
+        st.write(f"Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
         model_to_show = st.selectbox("", modeles)
         
         if model_to_show == "Arbre":
