@@ -567,7 +567,7 @@ def main():
             modeles = ("Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
-        st.write(f"{len(users)}Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
+        st.write(f"Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
         model_to_show = st.selectbox("", modeles)
         
         if model_to_show == "Arbre":
