@@ -8,6 +8,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from itertools import cycle, islice
 import time
+import random
 
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder
@@ -292,14 +293,24 @@ def load_file(file):
 def decision_precision(model_name, model, student_set, student_index, student_values, student_labels, test_values, test_labels):
     # Print testing scores
     st.subheader(f"\nDécision {model_name}\n")
+    compteur = 0
     for i in range(len(student_index)):
         table = student_set.reset_index()
-        st.write(f"Pour le module {table.loc[i,'code_module']} et la presentation {table.loc[i,'code_presentation']}, la prédiction est :")
+        message = f"Pour le module {table.loc[i,'code_module']} et la presentation {table.loc[i,'code_presentation']}, la prédiction est :"
         if model.predict(student_values)[i] == 1:
-            st.markdown("<b style='font-size:1.5rem;color:green;'>Pass</b>", unsafe_allow_html=True)
+            st.markdown(f"{message}<b style='font-size:1.4rem;color:green;'> Pass</b>", unsafe_allow_html=True)
         else:
-            st.markdown("<b style='font-size:1.5rem;color:red;'>Fail</b>", unsafe_allow_html=True)
+            st.markdown(f"{message}<b style='font-size:1.4rem;color:red;'> Fail</b>", unsafe_allow_html=True)
+            compteur += 1
     
+    if compteur == 0:
+        st.markdown("<h4 style='color:green;'>Continuez vos efforts, vous êtes sur la bonne voie !</h4>", unsafe_allow_html=True)
+    else:
+        list_tips = ["nos quizzs", "nos forums", "notre glossaire", "l'onglet collaboration", "notre wiki", "nos questionnaires", "nos ressources numériques", "quizzs externes", "nos liens vers de très bons sites"]
+        chosen_tips = random.sample(list_tips, 3)
+        st.markdown(f"<p style='line-height:1px;'><h4 style='color:red;'>Il va falloir donner plus d'efforts !</h4><h5> N'hésitez pas à vous rapprocher de {chosen_tips[0]}, de {chosen_tips[1]} ou encore de {chosen_tips[2]}.</h5></p>", unsafe_allow_html=True)
+
+
     st.subheader(f"\nPrécision {model_name}\n")
     predictions = model.predict(test_values)
     predictions_proba = model.predict_proba(test_values)[:, 1]
@@ -362,7 +373,7 @@ def main():
     # encoders = cleanAndMap(df_filtered_MPS, encode=False)
 
     graph = ("Description de l'étudiant", "Description des modules", "Prédiction")
-    st.subheader("Explorer :")    
+    st.markdown("<h2 style='margin-bottom:-25px;'>Explorer :</h2>", unsafe_allow_html=True)    
     graph_to_show = st.selectbox("", graph)
 
     if graph_to_show == "Description de l'étudiant":
@@ -567,7 +578,7 @@ def main():
             modeles = ("Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
-        st.write(f"Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
+        st.markdown(f"<h6 style='color:yellow; margin-bottom:-25px;'>Conseil : '{modeles[0]}' présente le meilleur taux de réussite.</h6>", unsafe_allow_html=True)
         model_to_show = st.selectbox("", modeles)
         
         if model_to_show == "Arbre":
