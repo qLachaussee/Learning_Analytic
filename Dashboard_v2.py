@@ -560,10 +560,11 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        if len(users) == 28785:
-            modeles = ("Ada Boost", "K Voisins", "Arbre")
-        else:
+        try:
+            load_model("Best RandomForestClassifier")
             modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
+        except:
+            modeles = ("Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
         st.write(f"{len(users)}Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
