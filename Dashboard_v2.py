@@ -563,7 +563,7 @@ def main():
         try:
             load_model("Best DecisionTreeClassifier")
             modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
-        except:
+        except OSError as e:
             modeles = ("Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
