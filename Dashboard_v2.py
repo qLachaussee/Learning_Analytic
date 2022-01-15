@@ -560,13 +560,13 @@ def main():
         student_values = all_values[student_index,:]
         student_labels = all_labels[student_index]
 
-        if len(user) == 28785:
+        if len(users) == 28785:
             modeles = ("Ada Boost", "K Voisins", "Arbre")
         else:
             modeles = ("Forêt aléatoire", "Ada Boost", "K Voisins", "Arbre")
         
         st.subheader("Choisir un modèle :")
-        st.write(f"Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
+        st.write(f"{len(users)}Conseil : '{modeles[0]}' présente le meilleur taux de réussite.")
         model_to_show = st.selectbox("", modeles)
         
         if model_to_show == "Arbre":
